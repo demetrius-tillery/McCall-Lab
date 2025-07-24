@@ -1,0 +1,90 @@
+import pandas as pd
+from scipy.stats import shapiro
+from statsmodels.stats.multitest import multipletests
+
+# Reads CSV file into a DataFrame, change file name in quotations as needed.
+data_all = pd.read_csv("livers_merged_cohort1_cohort2.csv")
+
+# Subsets DataFrame. Change as needed.
+df = data_all[(data_all['ATTRIBUTE_Cohort'] == 1) & (data_all['ATTRIBUTE_Group_number'].isin(['Group1','Group3']))]
+print(df)
+
+# Number of features to analyze
+num_features = df.shape[1] - 13  # Adjust for metadata columns, in this case 13.
+pvals = []
+
+# Loop through each feature and perform the Shapiro-Wilk test
+for i in range(num_features):
+    feature_data = df.iloc[:, i + 13]  # Adjust for metadata columns
+    
+    #Ensure there is enough data for the test, Shapiro-Wilk test requires at least 3 data points
+    if len(feature_data) > 2:  #
+        try:
+            #Shapiro-Wilk test viascipy library
+            _, p_value = shapiro(feature_data)
+            pvals.append(p_value)
+        except ValueError as e:
+            # Handle cases where the test cannot be performed
+            print(f"Shapiro-Wilk test could not be performed for feature {i + 13}: {e}")
+            pvals.append(1)  #Assign a high p-value if the test cannot be performed
+    else:
+        print(f"Not enough data for feature {i + 13}")
+        pvals.append(1)  #Assign a high p-value if there is not enough data
+
+#Adjust p-values for multiple comparisons using Benjamini-Hochberg method
+p_adjusted = multipletests(pvals, method='fdr_bh')[1]
+
+#Extract feature names and combine with the adjusted p-values
+features = df.columns[13:]  #Skips metadata columns, change as needed.
+features_pvals = list(zip(features, p_adjusted))
+
+# Filter significant features
+subset_feats = [feat for feat in features_pvals if feat[1] < 0.05]
+
+
+subset_feats_df = pd.DataFrame(subset_feats, columns=['Feature', 'Adjusted_P_Value'])
+subset_feats_df.to_csv("OUTPUT_pvals_adjusted_andfeats.csv", index=False)
+
+#Create empty lists for upregulated and downregulated features
+upreg = []
+downreg = []
+
+#Define the group names, change as needed.
+group1 = 'Group1'
+group2 = 'Group3'
+
+#Loop through each feature
+for i in range(subset_feats_df.shape[0]):
+    metabo = subset_feats_df.iloc[i, 0]  #Get feature name
+    D = df[metabo]  #Get feature data
+    DD = pd.DataFrame({'group': df['ATTRIBUTE_Group_number'], 'D': D})
+
+    #Mean calculations
+    means = DD.groupby('group')['D'].mean().to_dict()
+
+    #Determines if feature is upregulated or downregulated
+    if means[group1] > means[group2]:
+        upreg.append(metabo)
+    else:
+        downreg.append(metabo)
+
+print("Upregulated features:", upreg)
+print("Downregulated features:", downreg)
+
+#Print lengths, mainly a sanity check.
+print("Number of significantly changed features:", len(subset_feats_df))
+print("Number of upregulated features:", len(upreg))
+print("Number of downregulated features:", len(downreg))
+
+#Check if the lengths of upreg and downreg add up to the number of significant features. Another sanity check.
+if len(upreg) + len(downreg) == len(subset_feats_df):
+    print("The code ran correctly.")
+else:
+    print("The code ran incorrectly. The sum of the upregulated and downregulated features does not match the total number of significant features.")
+
+#Saves everything
+
+upreg_df = pd.DataFrame(upreg, columns=['Upregulated'])
+downreg_df = pd.DataFrame(downreg, columns=['Downregulated'])
+upreg_df.to_csv("OUTPUT_Upregulated.csv", index=False)
+downreg_df.to_csv("OUTPUT_Downregulated.csv", index=False)
