@@ -1,0 +1,23 @@
+###This is good to use if needing to merge two columns based on a matching column. Useful for merging feature+meta data CSVs
+import pandas as pd
+
+#Load CSV files you want to combine
+df1 = pd.read_csv('C8_heart_only_featuretable.csv')
+df2 = pd.read_csv('C8_heart_only_metadata.csv')
+
+print(df1)
+
+print(df2)
+
+#This fills the first CSV with data from the second CSV.
+
+column_to_combine = 'sampleid' #Replace this name as needed
+
+#Concats the two CSVs together based on the column, this can be repeated or made into a for loop for larger amounts of additions that need to be made.
+combined_df = pd.merge(df2, df1, on='sampleid', how='outer')
+
+print("Combined DataFrame:")
+print(combined_df)
+
+#Saves to a new CSV. Replace the name as needed.
+combined_df.to_csv('C8_Heart_featuremeta.csv', index=False)
