@@ -1,0 +1,34 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+#Include the csv file that were used for RandomForest analysis
+meta_data = pd.read_csv("livers_merged_cohort1_cohort2.csv")
+#Remove this line if you don't need to filter, isin lets you compare two different rows in the same column.
+filtered_meta_data = meta_data[meta_data['ATTRIBUTE_Group_number'].isin(['Group1', 'Group3'])]
+#iloc lets us select which rows we want plotted and saved, remove the iloc portion if you want a boxplot made for each feature.
+RF_data = pd.read_csv("VarImp.csv").iloc[565:575]
+#This line converts the data to a python list.
+RF_mass_list = RF_data.mass.to_list()
+
+#Make sure this prints as a list.
+print(RF_data)
+
+#change the theme of the plot
+sns.set_theme(style="white")
+RF_mass_list_number = 1
+#boxplot loop, if you only want to create one boxplot, this needs to be manipulated to remove the loop.
+for RF_mass in RF_mass_list:
+    fig1, ax1 = plt.subplots()
+    ax1.set_title(RF_mass)
+    
+    #creates boxplot with filtered data. Remove the # from the hue line if you want to separate boxplots using a key.
+    sns.boxplot(x=filtered_meta_data[str(RF_mass)], 
+                y=filtered_meta_data['ATTRIBUTE_Group_number'], 
+                #hue=filtered_meta_data['ATTRIBUTE_Cohort'],
+                ax=ax1)
+    
+    # Saves the plot, be warned, if you have a lot of data, this will print a boxplot for each feature.
+    plt.savefig("RF_" + str(RF_mass_list_number) + "_" + str(RF_mass) + "_tissue_boxplot.jpg")
+    RF_mass_list_number += 1
