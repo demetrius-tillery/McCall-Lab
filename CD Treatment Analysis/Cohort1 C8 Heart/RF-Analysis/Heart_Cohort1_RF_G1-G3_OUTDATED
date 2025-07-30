@@ -1,0 +1,48 @@
+##Load required libraries
+library(randomForest)
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+
+##Read CSV file
+whole_data <- read.csv("C8_Heart_featuremeta.csv")
+
+#Subset DataFrame to include only specific groups
+subset_data <- whole_data[whole_data$`ATTRIBUTE_Cohort` == 1, ]
+  
+
+##Prints subsetted df.
+dim(subset_data)
+
+#G1-G3 Random Forest, G1 is our uninfected (no treatment) group and G3 is our infected (no treatment) group.
+
+subset_data_G1_G3 <- subset_data %>%
+  filter(ATTRIBUTE_Group_number %in% c('Group1', 'Group3'))
+
+subset_data_G1_G3
+
+X_G1_G3 <- subset_data_G1_G3[, 14:3414]
+y_G1_G3 <- as.factor(subset(subset_data, ATTRIBUTE_Group_number %in% c("Group1", "Group3"))$ATTRIBUTE_Group_number)
+
+##Train RF model
+
+rffit_G1_G3 <- randomForest(X_G1_G3, y_G1_G3, ntree = 1000, importance = TRUE, do.trace = TRUE)
+
+#Fits model
+
+rffit_final_G1_G3 <- randomForest(X_G1_G3, y_G1_G3, ntree = 1000, importance = TRUE, do.trace = TRUE)
+
+##Prints fitted RF model.
+rffit_final_G1_G3
+
+##Creates MeanDecreaseAccuracy graph.
+varImp_G1_G3 <- importance(rffit_final_G1_G3, type = 1)
+
+#colnames(varImp_df)[0] <- "feature"
+
+##Saves to CSV file. Replace name of file as needed.
+write.csv(varImp_G1_G3, "Imp_C8_HEART_G1_G3.csv")
+
+##Creates a plot of the MDA values. 
+varImp_Plot_G1_G3<-varImpPlot(rffit_final_G1_G3, type=1)
+
